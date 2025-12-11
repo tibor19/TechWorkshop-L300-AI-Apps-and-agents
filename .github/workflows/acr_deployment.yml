@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 env:
-  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io
   IMAGE_NAME: chat-app
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
       - name: Login to ACR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+          registry: ${{ env.AZURE_CONTAINER_REGISTRY }}
           username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
           password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
 
