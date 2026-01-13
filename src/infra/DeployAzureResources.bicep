@@ -94,6 +94,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
     name: 'S0'
   }
   kind: 'AIServices'
+
   properties: {
     // required to work in Microsoft Foundry
     allowProjectManagement: true 
@@ -103,6 +104,11 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
 
     disableLocalAuth: false
     publicNetworkAccess: 'Enabled'
+
+    defaultProject: aiProjectName
+    associatedProjects: [
+      aiProjectName
+    ]
   }
 }
 
@@ -135,6 +141,73 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09
     }
   }
 }
+
+resource gpt5miniModel 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiFoundry
+  name: 'gpt-5-mini'
+  sku: {
+    capacity: 10
+    name: 'GlobalStandard'
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-5-mini'
+      version: '2025-08-07'
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    currentCapacity: 10
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [
+    aiProject
+  ]
+}
+
+resource phi4Model 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiFoundry
+  name: 'Phi-4'
+  sku: {
+    capacity: 1
+    name: 'GlobalStandard'
+  }
+  properties: {
+    model: {
+      name: 'Phi-4'
+      format: 'Microsoft'
+      version: '7'
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    currentCapacity: 1
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [
+    gpt5miniModel
+  ]
+}
+
+resource modelTextEmbedding3Large 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiFoundry
+  name: 'text-embedding-3-large'
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 425
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'text-embedding-3-large'
+      version: '1'
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    currentCapacity: 425
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [
+    phi4Model
+  ]
+}
+
 
 @description('Creates an Azure Application Insights resource.')
 resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
@@ -272,4 +345,3 @@ output storageAccountName string = storageAccount.name
 output container_registry_name string = containerRegistry.name
 output application_name string = appServiceApp.name
 output application_url string = appServiceApp.properties.hostNames[0]
-
