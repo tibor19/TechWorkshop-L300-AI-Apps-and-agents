@@ -112,6 +112,54 @@ def _get_openai_chat_completion_service() -> OpenAIChatClient:
 
 # endregion
 
+# region Get Products
+
+@ai_function(
+    name='get_products',
+    description='Retrieves a set of products based on a natural language user query.'
+)
+def get_products(
+    self,
+    question: Annotated[
+        str, 'Natural language query to retrieve products, e.g. "What kinds of paint rollers do you have in stock?"'
+    ],
+) -> list[dict[str, Any]]:
+    try:
+        # Simulate product retrieval based on the question
+        # In a real implementation, this would query a database or external service
+        product_dict = [
+            {
+                "id": "1",
+                "name": "Eco-Friendly Paint Roller",
+                "type": "Paint Roller",
+                "description": "A high-quality, eco-friendly paint roller for smooth finishes.",
+                "punchLine": "Roll with the best, paint with the rest!",
+                "price": 15.99
+            },
+            {
+                "id": "2",
+                "name": "Premium Paint Brush Set",
+                "type": "Paint Brush",
+                "description": "A set of premium paint brushes for detailed work and fine finishes.",
+                "punchLine": "Brush up your skills with our premium set!",
+                "price": 25.49
+            },
+            {
+                "id": "3",
+                "name": "All-Purpose Paint Tray",
+                "type": "Paint Tray",
+                "description": "A durable paint tray suitable for all types of rollers and brushes.",
+                "punchLine": "Tray it, paint it, love it!",
+                "price": 9.99
+            }
+        ]
+        return product_dict
+    except Exception as e:
+        return f'Product recommendation failed: {e!s}'
+
+
+# endregion
+
 # region Response Format
 
 
@@ -138,16 +186,60 @@ class AgentFrameworkProductManagementAgent:
         # Configure the chat completion service explicitly
         chat_service = get_chat_completion_service(ChatServices.AZURE_OPENAI)
 
+        # Define an MarketingAgent to handle marketing-related tasks
+        marketing_agent = ChatAgent(
+            chat_client=chat_service,
+            name='MarketingAgent',
+            instructions=(
+                'You specialize in planning and recommending marketing strategies for products. '
+                'This includes identifying target audiences, making product descriptions better, and suggesting promotional tactics. '
+                'Your goal is to help businesses effectively market their products and reach their desired customers.'
+            ),
+        )
+
+        # Define an RankerAgent to sort and recommend results
+        ranker_agent = ChatAgent(
+            chat_client=chat_service,
+            name='RankerAgent',
+            instructions=(
+                'You specialize in ranking and recommending products based on various criteria. '
+                'This includes analyzing product features, customer reviews, and market trends to provide tailored suggestions. '
+                'Your goal is to help customers find the best products for their needs.'
+            ),
+        )
+
+        # Define a ProductAgent to retrieve products from the Zava catalog
+        product_agent = ChatAgent(
+            chat_client=chat_service,
+            name='ProductAgent',
+            instructions=("""
+                You specialize in handling product-related requests from customers and employees.
+                This includes providing a list of products, identifying available quantities,
+                providing product prices, and giving product descriptions as they exist in the product catalog.
+                Your goal is to assist customers promptly and accurately with all product-related inquiries.
+                You are a helpful assistant that MUST use the get_products tool to answer all the questions from user.
+                You MUST NEVER answer from your own knowledge UNDER ANY CIRCUMSTANCES.
+                You MUST only use products from the get_products tool to answer product-related questions.
+                Do not ask the user for more information about the products; instead use the get_products tool to find the
+                relevant products and provide the information based on that.
+                Do not make up any product information. Use only the product information from the get_products tool.
+                """
+            ),
+            tools=get_products,
+        )
+
         # Define the main ProductManagerAgent to delegate tasks to the appropriate agents
         self.agent = ChatAgent(
             chat_client=chat_service,
             name='ProductManagerAgent',
             instructions=(
                 "Your role is to carefully analyze the user's request and respond as best as you can. "
-                'Your primary goal is precise and efficient delegation to ensure customers and employees receive accurate and specialized '
-                'assistance promptly.'
+                'Your primary goal is precise and efficient delegation to ensure customers and employees receive accurate and specialized assistance promptly.'
+                'Whenever a user query is related to retrieving product information, you MUST delegate the task to the ProductAgent.'
+                'Use the MarketingAgent for marketing-related queries and the RankerAgent for product ranking and recommendation tasks.'
+                'You may use these agents in conjunction with each other to provide comprehensive responses to user queries.'
             ),
-            tools=[],
+            tools=[product_agent.as_tool(), marketing_agent.as_tool(), ranker_agent.as_tool()],
         )
 
     async def invoke(self, user_input: str, session_id: str) -> dict[str, Any]:
