@@ -25,7 +25,7 @@ module updateRgTags 'updateRgTags.bicep' = {
   params: {
     rgName: resourceGroup().name
     rgLocation: resourceGroup().location
-    newTags: union(resourceGroup().tags ?? {}, { SecurityGroup: 'Ignore' })
+    newTags: union(resourceGroup().tags ?? {}, { SecurityControl: 'Ignore' })
   }
 }
 
@@ -84,7 +84,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
-resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   name: aiFoundryName
   location: location
   identity: {
@@ -102,6 +102,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     customSubDomainName: aiFoundryName
 
     disableLocalAuth: false
+    publicNetworkAccess: 'Enabled'
   }
 }
 
@@ -110,7 +111,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   Its advisable to create one project right away, so development teams can directly get started.
   Projects may be granted individual RBAC permissions and identities on top of what account provides.
 */ 
-resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-preview' = {
   name: aiProjectName
   parent: aiFoundry
   location: location
