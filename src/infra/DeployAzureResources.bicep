@@ -92,6 +92,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   kind: 'StorageV2'
   properties: {
     accessTier: 'Hot'
+    allowSharedKeyAccess: false
   }
   tags: tags
 }
@@ -110,10 +111,15 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
     // required to work in Microsoft Foundry
     allowProjectManagement: true 
 
+    defaultProject: aiProjectName
+    associatedProjects: [
+      aiProjectName
+    ]
+
     // Defines developer API endpoint subdomain
     customSubDomainName: aiFoundryName
 
-    disableLocalAuth: false
+    disableLocalAuth: true
     publicNetworkAccess: 'Enabled'
   }
   tags: tags
@@ -134,6 +140,77 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-pre
   properties: {}
   tags: tags
 }
+
+@description('Creates the gpt-5-mini model deployment.')
+resource gpt5miniModel 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiFoundry
+  name: 'gpt-5-mini'
+  sku: {
+    capacity: 10
+    name: 'GlobalStandard'
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-5-mini'
+      version: '2025-08-07'
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    currentCapacity: 10
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [
+    aiProject
+  ]
+}
+
+@description('Creates the Phi-4 model deployment.')
+resource phi4Model 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiFoundry
+  name: 'Phi-4'
+  sku: {
+    capacity: 1
+    name: 'GlobalStandard'
+  }
+  properties: {
+    model: {
+      name: 'Phi-4'
+      format: 'Microsoft'
+      version: '7'
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    currentCapacity: 1
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [
+    gpt5miniModel
+  ]
+}
+
+@description('Creates the TextEmbedding3Large model deployment.')
+resource modelTextEmbedding3Large 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiFoundry
+  name: 'text-embedding-3-large'
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 425
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'text-embedding-3-large'
+      version: '1'
+    }
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
+    currentCapacity: 425
+    raiPolicyName: 'Microsoft.DefaultV2'
+  }
+  dependsOn: [
+    phi4Model
+  ]
+}
+
+
 
 @description('Creates an Azure Log Analytics workspace.')
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -171,7 +248,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' =
     name: registrySku
   }
   properties: {
-    adminUserEnabled: true
+    adminUserEnabled: false
   }
   tags: tags
 }
@@ -194,12 +271,15 @@ resource appServicePlan 'Microsoft.Web/serverFarms@2022-09-01' = {
 resource appServiceApp 'Microsoft.Web/sites@2022-09-01' = {
   name: webAppName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     clientAffinityEnabled: false
     siteConfig: {
-      linuxFxVersion: 'DOCKER|${containerRegistry.name}.azurecr.io/${uniqueString(resourceGroup().id)}/techworkshopl300/zava'
+      linuxFxVersion: 'DOCKER|${containerRegistry.name}${environment().suffixes.acrLoginServer}/${uniqueString(resourceGroup().id)}/techworkshopl300/zava:latest'
       http20Enabled: true
       minTlsVersion: '1.2'
       appCommandLine: ''
@@ -209,15 +289,11 @@ resource appServiceApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://${containerRegistry.name}${environment().suffixes.acr}'
+          value: 'https://${containerRegistry.name}${environment().suffixes.acrLoginServer}'
         }
         {
           name: 'DOCKER_REGISTRY_SERVER_USERNAME'
           value: containerRegistry.name
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-          value: containerRegistry.listCredentials().passwords[0].value
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
