@@ -6,22 +6,24 @@ param userPrincipalId string = deployer().objectId
 @description('Primary location for all resources.')
 param location string = resourceGroup().location
 
-var cosmosDbName = '${uniqueString(resourceGroup().id)}-cosmosdb'
+var projectPrefix = uniqueString(resourceGroup().id)
+var cosmosDbName = '${projectPrefix}-cosmosdb'
 var cosmosDbDatabaseName = 'zava'
-var storageAccountName = '${uniqueString(resourceGroup().id)}sa'
-var aiFoundryName = 'aif-${uniqueString(resourceGroup().id)}'
-var aiProjectName = 'proj-${uniqueString(resourceGroup().id)}'
-var webAppName = '${uniqueString(resourceGroup().id)}-app'
-var appServicePlanName = '${uniqueString(resourceGroup().id)}-cosu-asp'
-var logAnalyticsName = '${uniqueString(resourceGroup().id)}-cosu-la'
-var appInsightsName = '${uniqueString(resourceGroup().id)}-cosu-ai'
+var storageAccountName = '${projectPrefix}sa'
+var aiFoundryName = 'aif-${projectPrefix}'
+var aiProjectName = 'proj-${projectPrefix}'
+var webAppName = '${projectPrefix}-app'
+var appServicePlanName = '${projectPrefix}-cosu-asp'
+var logAnalyticsName = '${projectPrefix}-cosu-la'
+var appInsightsName = '${projectPrefix}-cosu-ai'
 var webAppSku = 'S1'
-var registryName = '${uniqueString(resourceGroup().id)}cosureg'
+var registryName = '${projectPrefix}cosureg'
 var registrySku = 'Standard'
 
 var tags = {
   Project: 'Tech Workshop L300 - AI Apps and Agents'
   Environment: 'Lab'
+  ProjectPrefix: projectPrefix
   Owner: deployer().userPrincipalName
   SecurityControl: 'ignore'
   CostControl: 'ignore'
@@ -419,9 +421,9 @@ resource userAcrPushRoleAssignment 'Microsoft.Authorization/roleAssignments@2022
   }
 } 
 
+output project_prefix string = projectPrefix
 output cosmosDbEndpoint string = cosmosDbAccount.properties.documentEndpoint
 output storageAccountName string = storageAccount.name
 output container_registry_name string = containerRegistry.name
 output application_name string = appServiceApp.name
 output application_url string = appServiceApp.properties.hostNames[0]
-
