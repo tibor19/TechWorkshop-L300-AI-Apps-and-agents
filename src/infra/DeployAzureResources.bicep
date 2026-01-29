@@ -83,6 +83,37 @@ resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@20
   }
   tags: tags
 }
+@description('Creates an Azure Cosmos DB NoSQL API catalog.')
+resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  parent: cosmosDbDatabase
+  name: 'product_catalog'
+  properties: {
+    resource: {
+      id: 'product_catalog'
+      partitionKey: {
+        paths: [
+          '/ProductId'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/"_etag"/?'
+          }
+        ]
+      }
+    }
+  }
+  tags: tags
+}
 
 @description('Creates an Azure Storage account.')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
@@ -212,8 +243,6 @@ resource modelTextEmbedding3Large 'Microsoft.CognitiveServices/accounts/deployme
   ]
 }
 
-
-
 @description('Creates an Azure Log Analytics workspace.')
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
@@ -296,6 +325,38 @@ resource appServiceApp 'Microsoft.Web/sites@2022-09-01' = {
         {
           name: 'DOCKER_REGISTRY_SERVER_USERNAME'
           value: containerRegistry.name
+        }
+        {
+          name: 'COSMOS_ENDPOINT'
+          value: cosmosDbAccount.properties.documentEndpoint
+        }
+        {
+          name: 'DATABASE_NAME'
+          value: cosmosDbDatabaseName
+        }
+        {
+          name: 'CONTAINER_NAME'
+          value: 'product_catalog'
+        }
+        {
+          name: 'STORAGE_ACCOUNT_NAME'
+          value: storageAccount.name
+        }
+        {
+          name: 'STORAGE_CONTAINER_NAME'
+          value: 'zava'
+        }
+        {
+          name: 'GPT_ENDPOINT'
+          value: 'https://aif-${projectPrefix}.cognitiveservices.azure.com'
+        }
+        {
+          name: 'GPT_DEPLOYMENT'
+          value: gpt5miniModel.name
+        }
+        {
+          name: 'GPT_API_VERSION'
+          value: gpt5miniModel.properties.model.version
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
