@@ -238,6 +238,9 @@ var cosmosDbBuiltInDataContributorRoleId = '00000000-0000-0000-0000-000000000002
 // var cosmosDbAccountReaderRoleId = 'fbdf93bf-df7d-467e-a4d2-9458aa1360c8'
 var cognitiveServicesOpenAIUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 var cognitiveServicesContributorRoleId = '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68'
+var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+var acrPushRoleId = '8311e382-0749-4cb8-b61a-304f252e45ec'
 
 @description('Assigns Cosmos DB Built-in Data Contributor role to the specified user')
 resource cosmosDbDataContributorRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = {
@@ -262,6 +265,17 @@ resource cosmosDbProjectOpenAIUserRole 'Microsoft.Authorization/roleAssignments@
   }
 }
 
+@description('Assigns Cognitive Services OpenAI User role to the user on Microsoft Foundry')
+resource userFoundryOpenAIUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(aiFoundry.id, userPrincipalId, cognitiveServicesOpenAIUserRoleId)
+  scope: aiFoundry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAIUserRoleId)
+    principalId: userPrincipalId
+    principalType: 'User'
+  }
+}
+
 @description('Assigns Cognitive Services OpenAI User role to Cosmos DB on Microsoft Foundry')
 resource cosmosDbFoundryOpenAIUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(aiFoundry.id, cosmosDbAccount.id, cognitiveServicesOpenAIUserRoleId)
@@ -283,6 +297,51 @@ resource cosmosDbProjectContributorRole 'Microsoft.Authorization/roleAssignments
     principalType: 'ServicePrincipal'
   }
 }
+
+@description('Assigns StorageBlobDataContributor role to AI Project on storageAccount')
+resource storageAccountProjectRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, aiProjectName, storageBlobDataContributorRoleId)
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    principalId: aiProject.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+@description('Assigns StorageBlobDataContributor role to user on storageAccount')
+resource storageAccountUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, userPrincipalId, storageBlobDataContributorRoleId)
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    principalId: userPrincipalId
+    principalType: 'User'
+  }
+}
+
+@description('Assigns ACR Pull role to the app service on Container Registry')
+resource appServiceAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, appServiceApp.id, acrPullRoleId)
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+    principalId: appServiceApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Role assignments for user
+@description('Assigns ACR Push role to the user on Container Registry')
+resource userAcrPushRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, userPrincipalId, acrPushRoleId)
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPushRoleId)
+    principalId: userPrincipalId
+    principalType: 'User'
+  }
+} 
 
 output cosmosDbEndpoint string = cosmosDbAccount.properties.documentEndpoint
 output storageAccountName string = storageAccount.name
